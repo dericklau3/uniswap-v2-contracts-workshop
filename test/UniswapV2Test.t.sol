@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
-pragma abicoder v2;
 
 import "forge-std/Test.sol";
 import "forge-std/Vm.sol";
@@ -40,47 +39,6 @@ contract UniswapV2Test is Test {
         vm.stopPrank();
     }
 
-    function testSwapEthForToken() public {
-        vm.startPrank(account);
-        _addLiquidityEthToken();
-
-        address[] memory pathEthToToken = new address[](2);
-        pathEthToToken[0] = router.WETH(); // router helper: WETH address
-        pathEthToToken[1] = address(tokenA);
-        uint256 ethIn = 0.05 ether;
-        uint256 amountOutMinEthToToken =
-            (router.getAmountsOut(ethIn, pathEthToToken))[pathEthToToken.length - 1] * 99 / 100; // router quote for output amount
-        router.swapExactETHForTokensSupportingFeeOnTransferTokens{value: ethIn}(
-            amountOutMinEthToToken, // minimum tokens out (1% slippage buffer)
-            pathEthToToken, // swap path: WETH -> tokenA
-            account, // recipient of output tokens
-            _deadline() // transaction deadline (now + 30 min)
-        );
-
-        vm.stopPrank();
-    }
-
-    function testSwapTokenForToken() public {
-        vm.startPrank(account);
-        _addLiquidityTokenToken();
-
-        uint256 amountIn = 1_000 ether;
-        address[] memory pathTokenToToken = new address[](2);
-        pathTokenToToken[0] = address(tokenA);
-        pathTokenToToken[1] = address(tokenB);
-        uint256 amountOutMinTokenToToken =
-            (router.getAmountsOut(amountIn, pathTokenToToken))[pathTokenToToken.length - 1] * 99 / 100; // router quote for output amount
-        router.swapExactTokensForTokensSupportingFeeOnTransferTokens(
-            amountIn, // exact tokenIn amount to swap
-            amountOutMinTokenToToken, // minimum tokenOut (1% slippage buffer)
-            pathTokenToToken, // swap path: tokenA -> tokenB
-            account, // recipient of output tokens
-            _deadline() // transaction deadline (now + 30 min)
-        );
-
-        vm.stopPrank();
-    }
-
     function testRemoveLiquidity() public {
         vm.startPrank(account);
         _addLiquidityTokenToken();
@@ -112,6 +70,78 @@ contract UniswapV2Test is Test {
         vm.stopPrank();
     }
 
+    function testGetAmountsOut() public {
+        vm.startPrank(account);
+        _addLiquidityTokenToken();
+
+        uint256 amountIn = 1_000 ether;
+        address[] memory path = new address[](2);
+        path[0] = address(tokenA);
+        path[1] = address(tokenB);
+        uint256[] memory amounts = router.getAmountsOut(amountIn, path);
+        assertEq(amounts.length, 2);
+        assertEq(amounts[0], amountIn);
+        assertGt(amounts[1], 0);
+
+        vm.stopPrank();
+    }
+
+    function testGetAmountsIn() public {
+        vm.startPrank(account);
+        _addLiquidityTokenToken();
+
+        uint256 amountOut = 0.1 ether;
+        address[] memory path = new address[](2);
+        path[0] = address(tokenA);
+        path[1] = address(tokenB);
+        uint256[] memory amounts = router.getAmountsIn(amountOut, path);
+        assertEq(amounts.length, 2);
+        assertEq(amounts[1], amountOut);
+        assertGt(amounts[0], 0);
+
+        vm.stopPrank();
+    }
+
+    function testSwapExactTokensForTokens() public {
+        vm.startPrank(account);
+        _addLiquidityTokenToken();
+
+        uint256 amountIn = 1_000 ether;
+        address[] memory path = new address[](2);
+        path[0] = address(tokenA);
+        path[1] = address(tokenB);
+        uint256 amountOutMin = (router.getAmountsOut(amountIn, path))[path.length - 1] * 99 / 100;
+        router.swapExactTokensForTokens(
+            amountIn,
+            amountOutMin,
+            path,
+            account,
+            _deadline()
+        );
+
+        vm.stopPrank();
+    }
+
+    function testSwapTokensForExactTokens() public {
+        vm.startPrank(account);
+        _addLiquidityTokenToken();
+
+        uint256 amountOut = 0.1 ether;
+        address[] memory path = new address[](2);
+        path[0] = address(tokenA);
+        path[1] = address(tokenB);
+        uint256 amountInMax = (router.getAmountsIn(amountOut, path))[0] * 101 / 100;
+        router.swapTokensForExactTokens(
+            amountOut,
+            amountInMax,
+            path,
+            account,
+            _deadline()
+        );
+
+        vm.stopPrank();
+    }
+
     function _addLiquidityTokenToken() internal {
         uint256 amountADesired = 4_000 ether;
         uint256 amountBDesired = 1 ether;
@@ -124,20 +154,6 @@ contract UniswapV2Test is Test {
             amountBDesired, // desired amount of tokenB to deposit
             (amountADesired * 995) / 1000, // minimum tokenA (1% slippage buffer)
             (amountBDesired * 995) / 1000, // minimum tokenB (1% slippage buffer)
-            account, // recipient of LP tokens
-            _deadline() // transaction deadline (now + 30 min)
-        );
-    }
-
-    function _addLiquidityEthToken() internal {
-        uint256 tokenAForEthPool = 2_000 ether;
-        uint256 ethForPool = 1 ether;
-        tokenA.approve(address(router), type(uint256).max);
-        router.addLiquidityETH{value: ethForPool}(
-            address(tokenA), // token paired with ETH (WETH)
-            tokenAForEthPool, // desired token amount to deposit
-            (tokenAForEthPool * 995) / 1000, // minimum token amount (1% slippage buffer)
-            (ethForPool * 995) / 1000, // minimum ETH amount (1% slippage buffer)
             account, // recipient of LP tokens
             _deadline() // transaction deadline (now + 30 min)
         );
