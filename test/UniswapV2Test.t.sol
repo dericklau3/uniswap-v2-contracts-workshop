@@ -31,6 +31,7 @@ contract UniswapV2Test is Test {
         vm.deal(account, 10 ether);
     }
 
+    // 验证添加流动性流程可以成功执行（创建/获取池子并铸造LP）
     function testAddLiquidity() public {
         vm.startPrank(account);
 
@@ -39,6 +40,7 @@ contract UniswapV2Test is Test {
         vm.stopPrank();
     }
 
+    // 验证移除流动性时按照比例赎回且满足最小领取数量约束
     function testRemoveLiquidity() public {
         vm.startPrank(account);
         _addLiquidityTokenToken();
@@ -70,6 +72,30 @@ contract UniswapV2Test is Test {
         vm.stopPrank();
     }
 
+    // 验证quote按储备比例给出正确的无滑点兑换报价
+    function testQuote() public {
+        vm.startPrank(account);
+        _addLiquidityTokenToken();
+
+        address pair = IUniswapV2Factory(router.factory()).getPair(address(tokenA), address(tokenB));
+        require(pair != address(0), "pair-not-found");
+
+        (uint112 reserve0, uint112 reserve1,) = IUniswapV2Pair(pair).getReserves();
+        address token0 = IUniswapV2Pair(pair).token0();
+        uint256 reserveA = address(tokenA) == token0 ? reserve0 : reserve1;
+        uint256 reserveB = address(tokenA) == token0 ? reserve1 : reserve0;
+
+        uint256 amountAIn = 100 ether;
+        uint256 amountBQuote = router.quote(amountAIn, reserveA, reserveB);
+        uint256 expected = (amountAIn * reserveB) / reserveA;
+
+        assertEq(amountBQuote, expected);
+        assertGt(amountBQuote, 0);
+
+        vm.stopPrank();
+    }
+
+    // 验证getAmountsOut返回正确路径长度且输出金额为正
     function testGetAmountsOut() public {
         vm.startPrank(account);
         _addLiquidityTokenToken();
@@ -86,6 +112,7 @@ contract UniswapV2Test is Test {
         vm.stopPrank();
     }
 
+    // 验证getAmountsIn返回正确路径长度且输入金额为正
     function testGetAmountsIn() public {
         vm.startPrank(account);
         _addLiquidityTokenToken();
@@ -102,6 +129,7 @@ contract UniswapV2Test is Test {
         vm.stopPrank();
     }
 
+    // 验证精确输入数量兑换能够成功执行且满足最小输出
     function testSwapExactTokensForTokens() public {
         vm.startPrank(account);
         _addLiquidityTokenToken();
@@ -122,6 +150,7 @@ contract UniswapV2Test is Test {
         vm.stopPrank();
     }
 
+    // 验证精确输出数量兑换能够成功执行且不超过最大输入
     function testSwapTokensForExactTokens() public {
         vm.startPrank(account);
         _addLiquidityTokenToken();
