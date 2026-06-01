@@ -3,6 +3,7 @@ pragma solidity ^0.8.30;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {IERC20} from "@uniswap/v2-core/contracts/interfaces/IERC20.sol";
 import {IUniswapV2Pair} from "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 
 import {IPriceOracle} from "./interfaces/IPriceOracle.sol";
@@ -22,15 +23,18 @@ contract UniswapV2TwapOracle is IPriceOracle, Ownable {
     /// @param blockTimestampLast 上次更新时的 pair 时间戳。
     /// @param priceAverage 最近一次记录的价格，初始化为当前现价，后续更新为 TWAP，按 1e18 精度表示。
     /// @param tokenIsToken0 token 是否为 pair 的 token0，用于选择 price0 或 price1 累计值。
+    /// @param tokenUnit token 的完整单位，例如 18 位精度为 1e18。
     struct Observation {
         address pair;
         uint256 priceCumulativeLast;
         uint32 blockTimestampLast;
         uint256 priceAverage;
         bool tokenIsToken0;
+        uint256 tokenUnit;
     }
 
     address public immutable QUOTE_TOKEN;
+    uint256 public immutable QUOTE_TOKEN_UNIT;
 
     mapping(address token => Observation observation) public observations;
 
@@ -51,6 +55,7 @@ contract UniswapV2TwapOracle is IPriceOracle, Ownable {
         require(quoteToken_ != address(0), Errors.ZeroAddress());
 
         QUOTE_TOKEN = quoteToken_;
+        QUOTE_TOKEN_UNIT = _tokenUnit(quoteToken_);
     }
 
     /// @notice 为 token 设置或重置 Uniswap V2 pair。
@@ -63,6 +68,7 @@ contract UniswapV2TwapOracle is IPriceOracle, Ownable {
 
         address token0 = IUniswapV2Pair(pair).token0();
         address token1 = IUniswapV2Pair(pair).token1();
+        uint256 tokenUnit = _tokenUnit(token);
         bool tokenIsToken0;
         if (token0 == token && token1 == QUOTE_TOKEN) {
             tokenIsToken0 = true;
@@ -78,8 +84,9 @@ contract UniswapV2TwapOracle is IPriceOracle, Ownable {
             pair: pair,
             priceCumulativeLast: tokenIsToken0 ? price0Cumulative : price1Cumulative,
             blockTimestampLast: blockTimestamp,
-            priceAverage: _currentSpotPrice(pair, tokenIsToken0),
-            tokenIsToken0: tokenIsToken0
+            priceAverage: _currentSpotPrice(pair, tokenIsToken0, tokenUnit),
+            tokenIsToken0: tokenIsToken0,
+            tokenUnit: tokenUnit
         });
 
         emit PairSet(token, pair, tokenIsToken0);
@@ -124,7 +131,8 @@ contract UniswapV2TwapOracle is IPriceOracle, Ownable {
         }
 
         uint256 priceAverageUq112 = priceCumulativeDelta / timeElapsed;
-        observation.priceAverage = Math.mulDiv(priceAverageUq112, PRICE_PRECISION, Q112);
+        observation.priceAverage =
+            _normalizeRawPrice(Math.mulDiv(priceAverageUq112, PRICE_PRECISION, Q112), observation.tokenUnit);
         observation.priceCumulativeLast = priceCumulative;
         observation.blockTimestampLast = blockTimestamp;
 
@@ -145,16 +153,17 @@ contract UniswapV2TwapOracle is IPriceOracle, Ownable {
     /// @dev 基于 pair 当前储备计算 token 相对 QUOTE_TOKEN 的现价，按 1e18 精度表示。
     /// @param pair token/QUOTE_TOKEN 的 Uniswap V2 pair。
     /// @param tokenIsToken0 token 是否为 pair 的 token0。
+    /// @param tokenUnit token 的完整单位，例如 18 位精度为 1e18。
     /// @return 以 QUOTE_TOKEN 计价的现价，按 1e18 精度表示。
-    function _currentSpotPrice(address pair, bool tokenIsToken0) internal view returns (uint256) {
+    function _currentSpotPrice(address pair, bool tokenIsToken0, uint256 tokenUnit) internal view returns (uint256) {
         (uint112 reserve0, uint112 reserve1,) = IUniswapV2Pair(pair).getReserves();
         require(reserve0 > 0 && reserve1 > 0, Errors.InvalidParameter());
 
         if (tokenIsToken0) {
-            return Math.mulDiv(uint256(reserve1), PRICE_PRECISION, reserve0);
+            return _normalizeRawPrice(Math.mulDiv(uint256(reserve1), PRICE_PRECISION, reserve0), tokenUnit);
         }
 
-        return Math.mulDiv(uint256(reserve0), PRICE_PRECISION, reserve1);
+        return _normalizeRawPrice(Math.mulDiv(uint256(reserve0), PRICE_PRECISION, reserve1), tokenUnit);
     }
 
     /// @dev 读取 pair 当前累计价格；若 pair 时间戳早于当前区块，则用当前储备补算到当前时间。
@@ -188,7 +197,19 @@ contract UniswapV2TwapOracle is IPriceOracle, Ownable {
         Observation storage observation = observations[token];
         require(observation.pair != address(0), Errors.InvalidParameter());
 
-        realtimePrice = _currentSpotPrice(observation.pair, observation.tokenIsToken0);
+        realtimePrice = _currentSpotPrice(observation.pair, observation.tokenIsToken0, observation.tokenUnit);
         twapPrice = observation.priceAverage;
+    }
+
+    /// @dev 将 raw reserve ratio 价格从“quote 最小单位 / token 最小单位”归一为 18 位人类价格。
+    function _normalizeRawPrice(uint256 rawPrice, uint256 tokenUnit) internal view returns (uint256) {
+        return Math.mulDiv(rawPrice, tokenUnit, QUOTE_TOKEN_UNIT);
+    }
+
+    /// @dev 读取 ERC20 decimals 并转换为完整单位，限制指数避免 10 ** decimals 溢出。
+    function _tokenUnit(address token) internal view returns (uint256) {
+        uint8 decimals = IERC20(token).decimals();
+        require(decimals <= 77, Errors.InvalidParameter());
+        return 10 ** decimals;
     }
 }
