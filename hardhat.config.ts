@@ -30,7 +30,7 @@ const config: HardhatUserConfig = {
       },
       {
         version: "0.4.19",
-      },
+      }
     ]
   },
   networks: {
