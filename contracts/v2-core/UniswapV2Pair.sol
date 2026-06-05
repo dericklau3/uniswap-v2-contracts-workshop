@@ -89,12 +89,16 @@ contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20 {
     function _mintFee(uint112 _reserve0, uint112 _reserve1) private returns (bool feeOn) {
         address feeTo = IUniswapV2Factory(factory).feeTo();
         feeOn = feeTo != address(0);
+        // kLast 专门用于计算给平台的交易手续费，在 mint 和 burn 时都要更新 kLast。
         uint _kLast = kLast; // gas savings
         if (feeOn) {
             if (_kLast != 0) {
                 uint rootK = Math.sqrt(uint(_reserve0).mul(_reserve1));
                 uint rootKLast = Math.sqrt(_kLast);
                 if (rootK > rootKLast) {
+                    // totalSupply * (rootK - rootKLast) / (rootK * 5 + rootKLast)
+                    // 平台拿手续费的 1 / (5 + 1) = 1/6 = 0.3% * 1 / 6 = 0.05%
+                    // 如果 平台 0.1% LP 0.2%  那么平台拿手续费的 1 / (2 + 1) = 1/3 = 0.3% * 1 / 3 = 0.1%
                     uint numerator = totalSupply.mul(rootK.sub(rootKLast));
                     uint denominator = rootK.mul(5).add(rootKLast);
                     uint liquidity = numerator / denominator;
