@@ -34,7 +34,7 @@
 		"address": "0x04E0459121DB7D49AE932428762a44B616E967D6"
 	},
 	"usdt": {
-		"address": "0xc48105A8BC482ade2822ED2c4159Cc85AF1249A1"
+		"address": "0xa83C8A2162225c0DeD2d288FaF453076682a861C"
 	},
 	"uniswapV2Factory": {
 		"address": "0x842f00Caae1f75aBECcAEc69c9c2c9f73E3d6C9A",
@@ -47,56 +47,6 @@
 		"args": {
 			"facotry": "0x842f00Caae1f75aBECcAEc69c9c2c9f73E3d6C9A",
 			"weth": "0x04E0459121DB7D49AE932428762a44B616E967D6"
-		}
-	}
-}
-```
-
-
-
-### base sepolia
-
-```
-{
-	"weth": {
-		"address": "0xb59f43AdC35FF42b8735F92e7edDa842b7C08206"
-	},
-	"uniswapV2Factory": {
-		"address": "0xEcCAFd901A6A2DC4A5cbeA17C790B765821cCb72",
-		"args": {
-			"feeToSetter": "0x4408e1c6745B43350711317C89Db35B479992e5C"
-		}
-	},
-	"uniswapV2Router": {
-		"address": "0x5807f87541F90496bc74FC1de5139A4040a27DF9",
-		"args": {
-			"facotry": "0xEcCAFd901A6A2DC4A5cbeA17C790B765821cCb72",
-			"weth": "0xb59f43AdC35FF42b8735F92e7edDa842b7C08206"
-		}
-	}
-}
-```
-
-
-
-### arbitrum sepolia
-
-```
-{
-	"weth": {
-		"address": "0xb59f43AdC35FF42b8735F92e7edDa842b7C08206"
-	},
-	"uniswapV2Factory": {
-		"address": "0xEcCAFd901A6A2DC4A5cbeA17C790B765821cCb72",
-		"args": {
-			"feeToSetter": "0x4408e1c6745B43350711317C89Db35B479992e5C"
-		}
-	},
-	"uniswapV2Router": {
-		"address": "0x5807f87541F90496bc74FC1de5139A4040a27DF9",
-		"args": {
-			"facotry": "0xEcCAFd901A6A2DC4A5cbeA17C790B765821cCb72",
-			"weth": "0xb59f43AdC35FF42b8735F92e7edDa842b7C08206"
 		}
 	}
 }
