@@ -11,10 +11,10 @@ cp .env.example .env
 bunx hardhat run scripts/deployWeth.ts --network bsctest
 
 # 4. deploy UniswapV2Factory
-bunx hardhat run scripts/deploy/v2/deployFactory.ts --network bsctest
+bunx hardhat run scripts/deploy/deployFactory.ts --network bsctest
 
 # 5. Replace the init code hash in the pairFor function of UniswapV2Library
 
 # 6. deploy UniswapV2Router02
-bunx hardhat run scripts/deploy/v2/deployRouter.ts --network bsctest
+bunx hardhat run scripts/deploy/deployRouter.ts --network bsctest
 ```

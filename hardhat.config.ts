@@ -4,7 +4,7 @@ import 'solidity-docgen';
 import "hardhat-contract-sizer"
 import "hardhat-storage-layout-json";
 import 'dotenv/config';
-import "@nomicfoundation/hardhat-foundry";
+// import "@nomicfoundation/hardhat-foundry";
 
 const config: HardhatUserConfig = {
   solidity: {
@@ -47,6 +47,11 @@ const config: HardhatUserConfig = {
     base_sepolia: {
       url: `${process.env.BASE_SEPOLIA_NETWORK}`,
       chainId: 84532,
+      accounts: [`${process.env.PRIVATEKEY}`]
+    },
+    robinhood_test: {
+      url: `${process.env.ROBINHOOD_TEST_NETWORK}`,
+      chainId: 46630,
       accounts: [`${process.env.PRIVATEKEY}`]
     }
   },

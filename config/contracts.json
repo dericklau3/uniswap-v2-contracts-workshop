@@ -1,0 +1,18 @@
+{
+	"weth": {
+		"address": "0xFea12dfD7FA27BFf872AEA477f728099B1c71Bd4"
+	},
+	"uniswapV2Factory": {
+		"address": "0xa0cec339C549BB10b9720744CdAfb15A21B085A9",
+		"args": {
+			"feeToSetter": "0xD524a42103c81abEe242870058F4A28b192d5720"
+		}
+	},
+	"uniswapV2Router": {
+		"address": "0xdd67C669F804e36F496Eb228a361A465a1DDDAac",
+		"args": {
+			"factory": "0xa0cec339C549BB10b9720744CdAfb15A21B085A9",
+			"weth": "0xFea12dfD7FA27BFf872AEA477f728099B1c71Bd4"
+		}
+	}
+}
